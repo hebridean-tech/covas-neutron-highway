@@ -4,11 +4,17 @@ from .stt_fasterwhisper import (
     stt as stt_whisper,
     stt_model_names as stt_model_names_whisper,
 )
-from .stt_moonshine import (
-    init_stt as init_stt_moonshine,
-    stt as stt_moonshine,
-    stt_model_names as stt_model_names_moonshine,
-)
+
+try:
+    from .stt_moonshine import (
+        init_stt as init_stt_moonshine,
+        stt as stt_moonshine,
+        stt_model_names as stt_model_names_moonshine,
+    )
+except ImportError:
+    init_stt_moonshine = None
+    stt_moonshine = None
+    stt_model_names_moonshine = []
 
 # from .stt_nemo import (
 #    init_stt as init_stt_nemo,
