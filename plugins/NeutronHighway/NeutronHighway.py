@@ -37,6 +37,42 @@ POLL_MAX_S = 16.0
 # Projection state model
 # -----------------------------------------------------------------------
 
+
+# -----------------------------------------------------------------------
+# Pydantic models for action arguments (must be defined before the class)
+# -----------------------------------------------------------------------
+
+class PlotNeutronRouteArgs(BaseModel):
+    destination: str = Field(description="Destination system name.")
+    source: str | None = Field(
+        default=None,
+        description="Source system name.  If omitted the current system is used.",
+    )
+    range: float | None = Field(
+        default=None,
+        description="Ship's unladen jump range in light-years.",
+    )
+    efficiency: int | None = Field(
+        default=None,
+        description="Supercruise efficiency (1-100, default 60).",
+    )
+
+
+class GetRouteStatusArgs(BaseModel):
+    include_next: int | None = Field(
+        default=3,
+        description="How many upcoming systems to include (default 3).",
+    )
+
+
+class ClearRouteArgs(BaseModel):
+    pass
+
+
+# -----------------------------------------------------------------------
+# Projection state model
+# -----------------------------------------------------------------------
+
 class NeutronRouteState(BaseModel):
     """Live route state exposed to HUD components and status generator."""
     active: bool = False
@@ -668,32 +704,4 @@ class NeutronHighway(PluginBase):
             logger.warning("Failed to delete route file: %s", exc)
 
 
-# -----------------------------------------------------------------------
-# Pydantic models for action arguments
-# -----------------------------------------------------------------------
 
-class PlotNeutronRouteArgs(BaseModel):
-    destination: str = Field(description="Destination system name.")
-    source: str | None = Field(
-        default=None,
-        description="Source system name.  If omitted the current system is used.",
-    )
-    range: float | None = Field(
-        default=None,
-        description="Ship's unladen jump range in light-years.",
-    )
-    efficiency: int | None = Field(
-        default=None,
-        description="Supercruise efficiency (1-100, default 60).",
-    )
-
-
-class GetRouteStatusArgs(BaseModel):
-    include_next: int | None = Field(
-        default=3,
-        description="How many upcoming systems to include (default 3).",
-    )
-
-
-class ClearRouteArgs(BaseModel):
-    pass
