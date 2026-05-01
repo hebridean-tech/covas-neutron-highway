@@ -8,20 +8,14 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any
-
-try:
-    from typing import override
-except ImportError:
-    from typing_extensions import override
+from typing import Any, override
 
 from pydantic import BaseModel, Field
+from typing_extensions import override
 
-try:
-    from lib.PluginBase import PluginBase, PluginManifest
-    from lib.PluginHelper import PluginHelper, PluginEvent, Projection
-except ImportError:
-    from plugin_base import PluginBase, PluginEvent, PluginHelper, PluginManifest, Projection
+from lib.PluginBase import PluginBase, PluginManifest
+from lib.PluginSettingDefinitions import PluginSettings, SettingsGrid, ToggleSetting
+from lib.PluginHelper import PluginHelper, PluginEvent, Projection
 
 logger = logging.getLogger("NeutronHighway")
 
@@ -32,34 +26,12 @@ POLL_MAX_S = 16.0
 
 
 # -----------------------------------------------------------------------
-# Pydantic models for action arguments (must be defined before the class)
+# Plugin events (for registration with PluginBase super().__init__)
 # -----------------------------------------------------------------------
-
-class PlotNeutronRouteArgs(BaseModel):
-    destination: str = Field(description="Destination system name.")
-    source: str | None = Field(
-        default=None,
-        description="Source system name.  If omitted the current system is used.",
-    )
-    range: float | None = Field(
-        default=None,
-        description="Ship's unladen jump range in light-years.",
-    )
-    efficiency: int | None = Field(
-        default=None,
-        description="Supercruise efficiency (1-100, default 60).",
-    )
-
-
-class GetRouteStatusArgs(BaseModel):
-    include_next: int | None = Field(
-        default=3,
-        description="How many upcoming systems to include (default 3).",
-    )
-
-
-class ClearRouteArgs(BaseModel):
-    pass
+# COVAS:NEXT event classes must subclass Event and use @dataclass.
+# For plugin events we re-use PluginEvent (kind='plugin') dispatched
+# through helper.dispatch_event — no custom event class registration
+# is needed.
 
 
 # -----------------------------------------------------------------------
@@ -98,6 +70,59 @@ class NeutronRouteProjection(Projection[NeutronRouteState]):
 
 class NeutronHighway(PluginBase):
 
+    settings_config = PluginSettings(
+        key="NeutronHighway",
+        label="Neutron Highway",
+        icon="route",
+        grids=[
+            SettingsGrid(
+                key="general",
+                label="General",
+                fields=[
+                    ToggleSetting(
+                        key="enabled",
+                        label="Enabled",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=True,
+                    ),
+                ],
+            ),
+        ],
+    )
+
+# -----------------------------------------------------------------------
+# Pydantic models for action arguments
+# -----------------------------------------------------------------------
+
+class PlotNeutronRouteArgs(BaseModel):
+    destination: str = Field(description="Destination system name.")
+    source: str | None = Field(
+        default=None,
+        description="Source system name.  If omitted the current system is used.",
+    )
+    range: float | None = Field(
+        default=None,
+        description="Ship's unladen jump range in light-years.",
+    )
+    efficiency: int | None = Field(
+        default=None,
+        description="Supercruise efficiency (1-100, default 60).",
+    )
+
+
+class GetRouteStatusArgs(BaseModel):
+    include_next: int | None = Field(
+        default=3,
+        description="How many upcoming systems to include (default 3).",
+    )
+
+
+class ClearRouteArgs(BaseModel):
+    pass
+
+
     def __init__(self, plugin_manifest: PluginManifest):
         super().__init__(plugin_manifest)
 
@@ -121,6 +146,9 @@ class NeutronHighway(PluginBase):
 
     def on_chat_start(self, helper: PluginHelper):
         # Restore saved route
+        if not self.settings.get("enabled", True):
+            return
+
         self._load_route(helper)
 
         # Store helper for use in sideeffects
@@ -695,6 +723,5 @@ class NeutronHighway(PluginBase):
                 path.unlink()
         except Exception as exc:
             logger.warning("Failed to delete route file: %s", exc)
-
 
 
