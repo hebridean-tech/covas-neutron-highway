@@ -8,13 +8,20 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any, override
+from typing import Any
+
+try:
+    from typing import override
+except ImportError:
+    from typing_extensions import override
 
 from pydantic import BaseModel, Field
-from typing_extensions import override
 
-from lib.PluginBase import PluginBase, PluginManifest
-from lib.PluginHelper import PluginHelper, PluginEvent, Projection
+try:
+    from lib.PluginBase import PluginBase, PluginManifest
+    from lib.PluginHelper import PluginHelper, PluginEvent, Projection
+except ImportError:
+    from plugin_base import PluginBase, PluginEvent, PluginHelper, PluginManifest, Projection
 
 logger = logging.getLogger("NeutronHighway")
 
@@ -22,20 +29,6 @@ SPANSH_ROUTE_URL = "https://www.spansh.co.uk/api/route"
 SPANSH_RESULTS_URL = "https://www.spansh.co.uk/api/results"
 POLL_INITIAL_S = 0.25
 POLL_MAX_S = 16.0
-
-
-# -----------------------------------------------------------------------
-# Plugin events (for registration with PluginBase super().__init__)
-# -----------------------------------------------------------------------
-# COVAS:NEXT event classes must subclass Event and use @dataclass.
-# For plugin events we re-use PluginEvent (kind='plugin') dispatched
-# through helper.dispatch_event — no custom event class registration
-# is needed.
-
-
-# -----------------------------------------------------------------------
-# Projection state model
-# -----------------------------------------------------------------------
 
 
 # -----------------------------------------------------------------------
