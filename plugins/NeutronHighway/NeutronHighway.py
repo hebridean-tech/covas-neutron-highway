@@ -68,29 +68,6 @@ class NeutronRouteProjection(Projection[NeutronRouteState]):
         return []
 
 
-class NeutronHighway(PluginBase):
-
-    settings_config = PluginSettings(
-        key="NeutronHighway",
-        label="Neutron Highway",
-        icon="route",
-        grids=[
-            SettingsGrid(
-                key="general",
-                label="General",
-                fields=[
-                    ToggleSetting(
-                        key="enabled",
-                        label="Enabled",
-                        type="toggle",
-                        readonly=False,
-                        placeholder=None,
-                        default_value=True,
-                    ),
-                ],
-            ),
-        ],
-    )
 
 # -----------------------------------------------------------------------
 # Pydantic models for action arguments
@@ -121,6 +98,31 @@ class GetRouteStatusArgs(BaseModel):
 
 class ClearRouteArgs(BaseModel):
     pass
+
+class NeutronHighway(PluginBase):
+
+    settings_config = PluginSettings(
+        key="NeutronHighway",
+        label="Neutron Highway",
+        icon="route",
+        grids=[
+            SettingsGrid(
+                key="general",
+                label="General",
+                fields=[
+                    ToggleSetting(
+                        key="enabled",
+                        label="Enabled",
+                        type="toggle",
+                        readonly=False,
+                        placeholder=None,
+                        default_value=True,
+                    ),
+                ],
+            ),
+        ],
+    )
+
 
 
     def __init__(self, plugin_manifest: PluginManifest):
