@@ -1,0 +1,8 @@
+{
+  "guid": "a3f7c2e1-8d4b-4f6a-9c1e-2b5d8a3f7e60",
+  "name": "Neutron Highway",
+  "version": "0.1.0",
+  "author": "hebridean-tech",
+  "description": "Plot neutron highway routes via Spansh, track your progress jump-by-jump, and keep the AI informed of your route status.",
+  "entrypoint": "NeutronHighway.py"
+}
