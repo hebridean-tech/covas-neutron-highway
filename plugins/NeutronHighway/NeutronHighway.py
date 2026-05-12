@@ -207,12 +207,14 @@ class NeutronHighway(PluginBase):
                 f"{e.plugin_event_content.get('destination')} has been plotted.  It has "
                 f"{e.plugin_event_content.get('total_jumps')} jumps totalling "
                 f"{e.plugin_event_content.get('total_distance'):.1f} Ly.  The first few "
-                f"systems are: {e.plugin_event_content.get('first_systems')}."
+                f"systems are: {e.plugin_event_content.get('first_systems')}.  "
+                f"ACTION REQUIRED: Open the in-game Galaxy Map (press {chr(2)}), set the route target to the "
+                f"first system on the route, and plot it so the commander can start following the neutron highway."
             ),
         )
         helper.register_event(
             name="neutron_route_progress",
-            should_reply_check=lambda e: False,
+            should_reply_check=lambda e: True,
             prompt_generator=lambda e: (
                 f"Commander jumped to {e.plugin_event_content.get('system_name')} which is "
                 f"jump {e.plugin_event_content.get('jump_number')}/{e.plugin_event_content.get('total_jumps')} "
@@ -220,7 +222,9 @@ class NeutronHighway(PluginBase):
                 f"{e.plugin_event_content.get('jumps_remaining')} jumps remain.  "
                 f"{'⚡ Neutron star boost applied.' if e.plugin_event_content.get('is_neutron') and e.plugin_event_content.get('boosted') else ''}"
                 f"{'⚠️ Neutron system — boost NOT applied, commander may have missed the scoop cone.' if e.plugin_event_content.get('is_neutron') and not e.plugin_event_content.get('boosted') else ''}"
-                f"Next system: {e.plugin_event_content.get('next_system')}."
+                f"ACTION REQUIRED: Open the in-game Galaxy Map (press {chr(2)}), set the route target to "
+                f"the NEXT system on the neutron highway route: {e.plugin_event_content.get('next_system')}, "
+                f"and plot the route. This keeps the commander's in-game navigation aligned with the neutron highway."
             ),
         )
         helper.register_event(
@@ -417,30 +421,40 @@ class NeutronHighway(PluginBase):
         if not jumped_system:
             return
 
-        total = len(self._route) - 1
-        expected = self._route[self._current_index]
-        expected_system = expected["system"]
-        expected_id64 = expected.get("id64")
+        # Scan the ENTIRE remaining route for a match, not just the next
+        # system. The in-game route planner may skip ahead through multiple
+        # neutron route systems in a single jump.
+        matched_index = None
+        for i in range(self._current_index, len(self._route)):
+            candidate = self._route[i]
+            candidate_system = candidate["system"]
+            candidate_id64 = candidate.get("id64")
 
-        # Match by id64/SystemAddress first (reliable), then by name
-        matched = False
-        if jumped_address is not None and expected_id64 is not None:
-            matched = int(jumped_address) == int(expected_id64)
-        if not matched:
-            matched = (
-                jumped_system.strip().lower() == expected_system.strip().lower()
-            )
+            hit = False
+            if jumped_address is not None and candidate_id64 is not None:
+                hit = int(jumped_address) == int(candidate_id64)
+            if not hit:
+                hit = (
+                    jumped_system.strip().lower()
+                    == candidate_system.strip().lower()
+                )
+            if hit:
+                matched_index = i
+                break
 
-        if matched:
-            self._current_index += 1
+        if matched_index is not None:
+            # Fast-forward the route index to wherever we landed
+            self._current_index = matched_index + 1
             boosted = content.get("BoostUsed") == 4
             self._projection.state.boosted = boosted
             self._update_projection()
             self._save_route_cached()
 
+            total = len(self._route) - 1
+
             if self._current_index >= len(self._route):
-                # Route complete — capture total_distance before clearing
-                total_distance = expected.get("distance_left", 0)
+                # Route complete
+                total_distance = self._route[matched_index].get("distance_left", 0)
                 self._dispatch_event_safe(
                     "neutron_route_complete",
                     {
@@ -455,6 +469,8 @@ class NeutronHighway(PluginBase):
                 self._delete_route_cached()
                 return
 
+            # Dispatch waypoint arrival — AI should open galaxy map and
+            # plot the next system as the in-game route target.
             current_jump = self._route[self._current_index]
             next_sys = (
                 self._route[self._current_index + 1]["system"]
@@ -475,6 +491,9 @@ class NeutronHighway(PluginBase):
                 },
             )
         else:
+            # Only fire route_lost if the jumped system is NOWHERE in
+            # the remaining route — it's a genuine off-course jump.
+            expected_system = self._route[self._current_index]["system"]
             self._dispatch_event_safe(
                 "neutron_route_lost",
                 {
